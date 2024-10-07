@@ -1,49 +1,44 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity ^0.8.18;
+pragma solidity 0.8.19;
 import {Script} from "forge-std/Script.sol";
 import {MockV3Aggregator} from "../test/mocks/MockV3Aggregator.sol";
 
 contract HelperConfig is Script {
-    uint8 public constant Decimals = 8;
-    int public constant InitialAnswer = 2000e8;
-    NetworkConfig public activeNetworkconfig;
+    NetworkConfig public activeChainConfig;
+    struct NetworkConfig {
+        address priceFeedAddress;
+    }
+    uint8 public constant DECIMAL = 8;
+    int public constant INITIAL_PRICE = 2000e8;
 
     constructor() {
         if (block.chainid == 11155111) {
-            activeNetworkconfig = getSepoloaEthConfig();
+            activeChainConfig = getSepoliaConfig();
         } else {
-            activeNetworkconfig = getOrCreateAnvilEthConfig();
+            activeChainConfig = getOrCreateAnvilConfig();
         }
-        // else if (block.chainid == 137) {
-        //     activeNetworkconfig = getAnvilEthConfig();
-        // }
     }
 
-    struct NetworkConfig {
-        address priceFeed;
-    }
-
-    function getSepoloaEthConfig() public pure returns (NetworkConfig memory) {
+    function getSepoliaConfig() public pure returns (NetworkConfig memory) {
         return
             NetworkConfig({
-                priceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306 // ETH / USD
+                priceFeedAddress: 0x694AA1769357215DE4FAC081bf1f309aDC325306
             });
     }
 
-    function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory) {
-        if (activeNetworkconfig.priceFeed != address(0)) {
-            return activeNetworkconfig;
+    function getOrCreateAnvilConfig() public returns (NetworkConfig memory) {
+        // deploy mockAggregatorV3
+        //check whether mocks are already deployed
+        if (activeChainConfig.priceFeedAddress != address(0)) {
+            return activeChainConfig;
         }
-
         vm.startBroadcast();
-        MockV3Aggregator mockPrice = new MockV3Aggregator(
-            Decimals,
-            InitialAnswer
+        MockV3Aggregator mockAggregator = new MockV3Aggregator(
+            DECIMAL,
+            INITIAL_PRICE
         );
         vm.stopBroadcast();
-        NetworkConfig memory anvilConfig = NetworkConfig({
-            priceFeed: address(mockPrice)
-        });
-        return anvilConfig;
+
+        return NetworkConfig({priceFeedAddress: address(mockAggregator)});
     }
 }
