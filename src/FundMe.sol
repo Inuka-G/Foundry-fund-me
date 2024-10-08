@@ -6,9 +6,9 @@ error NotOwner();
 contract FundMe {
     using PriceConverter for uint256;
     uint256 public constant MININUM_USD_VALUE = 50 * 1e18;
-    address[] public funders;
-    mapping(address => uint256) addressToAmount;
-    address public immutable i_owner;
+    address[] private s_funders;
+    mapping(address => uint256) private s_addressToAmount;
+    address private immutable i_owner;
     AggregatorV3Interface priceFeedContract;
 
     constructor(address priceFeedAddress) {
@@ -21,16 +21,16 @@ contract FundMe {
             msg.value.getConversionRate(priceFeedContract) >= MININUM_USD_VALUE,
             "Didnt sent enough ETH"
         );
-        funders.push(msg.sender);
-        addressToAmount[msg.sender] = msg.value;
+        s_funders.push(msg.sender);
+        s_addressToAmount[msg.sender] += msg.value;
     }
 
     function widthDraw() public onlyOwner {
-        for (uint i = 0; i < funders.length; i++) {
-            address funderAddress = funders[i];
-            addressToAmount[funderAddress] = 0;
+        for (uint i = 0; i < s_funders.length; i++) {
+            address funderAddress = s_funders[i];
+            s_addressToAmount[funderAddress] = 0;
         }
-        funders = new address[](0);
+        s_funders = new address[](0);
 
         // withdraw the balance to the owner
         // -----------------------------------------
@@ -60,6 +60,24 @@ contract FundMe {
         // for more gas optimization use this
         if (msg.sender != i_owner) revert NotOwner();
         _;
+    }
+
+    function getAddressToAmount(
+        address funderAddress
+    ) external view returns (uint256) {
+        return s_addressToAmount[funderAddress];
+    }
+
+    function getFunders() external view returns (address[] memory) {
+        return s_funders;
+    }
+
+    function getFunder(uint256 index) external view returns (address) {
+        return s_funders[index];
+    }
+
+    function getOwner() external view returns (address) {
+        return i_owner;
     }
 
     // route to fund() function
